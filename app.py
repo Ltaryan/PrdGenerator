@@ -6,8 +6,15 @@ from pathlib import Path
 
 import streamlit as st
 
+try:  # optional: read API keys from a local .env file
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 from prdiq.drafter import Intake, draft_prd
-from prdiq.llm import DEFAULT_MODEL, LLMError
+from prdiq.llm import DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, LLMError, provider_name
 from prdiq.reviewer import retain_exact_source_quotes, review_with_ai
 from prdiq.rules import ReviewResult, merge_verified_findings, review_prd
 from prdiq.validation import MAX_INPUT_CHARS, find_note_conflicts, redact_sensitive, validate_text
@@ -18,23 +25,40 @@ SAMPLE_DIR = APP_DIR / "sample_data"
 MAX_AI_REQUESTS_PER_SESSION = 6
 
 
-def _api_key() -> str:
+def _setting(name: str, default: str = "") -> str:
+    """Environment variable (or .env) first, then Streamlit secrets."""
+    value = os.getenv(name, "")
+    if value:
+        return value
     try:
-        return os.getenv("ANTHROPIC_API_KEY", "") or str(st.secrets.get("ANTHROPIC_API_KEY", ""))
+        return str(st.secrets.get(name, default))
     except Exception:
-        return os.getenv("ANTHROPIC_API_KEY", "")
+        return default
+
+
+def _provider() -> str:
+    """AI_PROVIDER=anthropic|gemini, or automatic: Anthropic if its key is set, else Gemini if its key is set."""
+    chosen = _setting("AI_PROVIDER").strip().lower()
+    if chosen in ("anthropic", "gemini"):
+        return chosen
+    if _setting("ANTHROPIC_API_KEY"):
+        return "anthropic"
+    return "gemini" if _setting("GEMINI_API_KEY") else "anthropic"
+
+
+def _api_key() -> str:
+    return _setting("GEMINI_API_KEY" if _provider() == "gemini" else "ANTHROPIC_API_KEY")
 
 
 def _model_name() -> str:
-    try:
-        return os.getenv("ANTHROPIC_MODEL", "") or str(st.secrets.get("ANTHROPIC_MODEL", DEFAULT_MODEL))
-    except Exception:
-        return os.getenv("ANTHROPIC_MODEL", DEFAULT_MODEL)
+    if _provider() == "gemini":
+        return _setting("GEMINI_MODEL") or DEFAULT_GEMINI_MODEL
+    return _setting("ANTHROPIC_MODEL") or DEFAULT_MODEL
 
 
 def _consume_request() -> None:
     if st.session_state.ai_requests >= MAX_AI_REQUESTS_PER_SESSION:
-        raise LLMError(f"This session reached its limit of {MAX_AI_REQUESTS_PER_SESSION} Anthropic requests.")
+        raise LLMError(f"This session reached its limit of {MAX_AI_REQUESTS_PER_SESSION} AI requests.")
     st.session_state.ai_requests += 1
 
 
@@ -81,7 +105,7 @@ def _maybe_ai(requested: bool, key: str, confidential: bool, confirm_confidentia
     if confidential and not confirm_confidential:
         return False, "AI was not used: confirm you are allowed to send this confidential-looking text, or keep the review local."
     if not key:
-        return False, "Anthropic API key is missing; continuing without AI."
+        return False, f"{PROVIDER} API key is missing; continuing without AI."
     if st.session_state.ai_requests >= MAX_AI_REQUESTS_PER_SESSION:
         return False, f"The session reached the {MAX_AI_REQUESTS_PER_SESSION}-request AI limit; using local rules instead."
     return True, ""
@@ -104,6 +128,7 @@ if "dark_theme" not in st.session_state:
 
 api_key = _api_key()
 model_name = _model_name()
+PROVIDER = provider_name(model_name)  # "Anthropic" or "Google Gemini", shown wherever text may be sent
 dark_mode = st.sidebar.toggle("Dark theme", key="dark_theme")
 palette = {
     "ink": "#e7efec" if dark_mode else "#172b2a",
@@ -159,7 +184,7 @@ st.sidebar.caption("AI is optional. Pasted text is not stored in a database.")
 st.markdown('<p class="prdiq-eyebrow">Product requirements · draft & review</p>', unsafe_allow_html=True)
 st.title("PRDIQ")
 st.caption("Turn rough notes into a grounded PRD draft, or review an existing PRD for the gaps that make AI features fail.")
-st.warning("Do not paste employer-confidential or sensitive material. AI stays off unless you explicitly opt in; opted-in text is sent to Anthropic after email and phone redaction.")
+st.warning(f"Do not paste employer-confidential or sensitive material. AI stays off unless you explicitly opt in; opted-in text is sent to {PROVIDER} after email and phone redaction.")
 
 draft_tab, review_tab, export_tab = st.tabs(["Draft a PRD", "Review a PRD", "Export Markdown"])
 
@@ -173,7 +198,7 @@ with draft_tab:
         constraints = st.text_area("Constraints", placeholder="Scope, dependencies, technical or policy limits", height=78)
         notes = st.text_area("Messy notes", placeholder="Paste rough notes. Instruction-like content is treated as source data.", height=130)
         is_ai_feature = st.checkbox("This PRD describes an AI feature", value=True)
-        use_ai_draft = st.checkbox("Send redacted input to Anthropic for an AI-assisted draft", value=False)
+        use_ai_draft = st.checkbox(f"Send redacted input to {PROVIDER} for an AI-assisted draft", value=False)
         confirm_draft_private = st.checkbox("I have permission to send confidential-looking draft text", value=False)
         submitted_draft = st.form_submit_button("Draft PRD", type="primary")
 
@@ -234,7 +259,7 @@ with review_tab:
     with st.form("review_form"):
         review_text = st.text_area("PRD text", key="review_input", height=330, placeholder="Paste a PRD to review")
         is_ai_review = st.checkbox("This PRD describes an AI feature", value=True, key="review_is_ai")
-        use_ai_review = st.checkbox("Send redacted PRD to Anthropic for additional review", value=False)
+        use_ai_review = st.checkbox(f"Send redacted PRD to {PROVIDER} for additional review", value=False)
         confirm_review_private = st.checkbox("I have permission to send confidential-looking review text", value=False)
         submitted_review = st.form_submit_button("Review PRD", type="primary")
 
