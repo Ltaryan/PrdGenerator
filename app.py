@@ -88,23 +88,6 @@ def _maybe_ai(requested: bool, key: str, confidential: bool, confirm_confidentia
 
 
 st.set_page_config(page_title="PRDIQ", page_icon="P", layout="wide")
-st.markdown(
-    """
-    <style>
-      :root { --ink: #172b2a; --muted: #536663; --accent: #087f72; --line: #d9e5e1; --wash: #f2f7f5; }
-      .stApp { background: #fbfdfc; color: var(--ink); }
-      h1, h2, h3 { color: var(--ink); font-family: Georgia, 'Times New Roman', serif; }
-      h1 { letter-spacing: 0; }
-      [data-testid="stSidebar"] { background: #f2f7f5; border-right: 1px solid var(--line); }
-      [data-testid="stMetric"] { background: var(--wash); border: 1px solid var(--line); padding: 12px 14px; border-radius: 4px; }
-      div.stButton > button, div.stDownloadButton > button { border-radius: 4px; font-weight: 600; }
-      div.stButton > button[kind="primary"] { background: var(--accent); border-color: var(--accent); }
-      blockquote { border-left-color: var(--accent); color: var(--muted); }
-      .prdiq-eyebrow { color: var(--accent); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
 
 if "ai_requests" not in st.session_state:
     st.session_state.ai_requests = 0
@@ -116,9 +99,57 @@ if "review_result" not in st.session_state:
     st.session_state.review_result = None
 if "review_markdown" not in st.session_state:
     st.session_state.review_markdown = ""
+if "dark_theme" not in st.session_state:
+    st.session_state.dark_theme = False
 
 api_key = _api_key()
 model_name = _model_name()
+dark_mode = st.sidebar.toggle("Dark theme", key="dark_theme")
+palette = {
+    "ink": "#e7efec" if dark_mode else "#172b2a",
+    "muted": "#a9bab4" if dark_mode else "#536663",
+    "accent": "#70cfc0" if dark_mode else "#087f72",
+    "line": "#344742" if dark_mode else "#d9e5e1",
+    "wash": "#1d2b28" if dark_mode else "#f2f7f5",
+    "canvas": "#101817" if dark_mode else "#fbfdfc",
+    "surface": "#182321" if dark_mode else "#ffffff",
+    "field": "#14201e" if dark_mode else "#ffffff",
+}
+st.markdown(
+    f"""
+    <style>
+            :root {{
+                color-scheme: {"dark" if dark_mode else "light"};
+                --ink: {palette["ink"]}; --muted: {palette["muted"]}; --accent: {palette["accent"]};
+                --line: {palette["line"]}; --wash: {palette["wash"]}; --canvas: {palette["canvas"]};
+                --surface: {palette["surface"]}; --field: {palette["field"]};
+            }}
+            .stApp, [data-testid="stAppViewContainer"] {{ background: var(--canvas); color: var(--ink); }}
+            [data-testid="stHeader"] {{ background: var(--canvas); }}
+            h1, h2, h3 {{ color: var(--ink); font-family: Georgia, 'Times New Roman', serif; }}
+            h1 {{ letter-spacing: 0; }}
+            [data-testid="stSidebar"] {{ background: var(--wash); border-right: 1px solid var(--line); }}
+            [data-testid="stMetric"] {{ background: var(--wash); border: 1px solid var(--line); padding: 12px 14px; border-radius: 4px; }}
+            [data-testid="stTextInput"] input, [data-testid="stTextArea"] textarea,
+            [data-testid="stSelectbox"] input, [data-baseweb="select"] > div {{
+                background: var(--field); color: var(--ink); border-color: var(--line);
+            }}
+            [data-testid="stTextInput"] input::placeholder,
+            [data-testid="stTextArea"] textarea::placeholder,
+            [data-testid="stSelectbox"] input::placeholder {{ color: var(--muted) !important; opacity: 1; }}
+            [data-testid="stTabs"] button {{ color: var(--ink); }}
+            [data-testid="stAlert"] {{ background: var(--wash); border-color: var(--line); color: var(--ink); }}
+            [data-testid="stExpander"] {{ background: var(--surface); border-color: var(--line); }}
+            [data-testid="stCode"] pre {{ background: var(--field); color: var(--ink); border: 1px solid var(--line); }}
+            div.stButton > button, div.stDownloadButton > button {{ border-radius: 4px; font-weight: 600; color: var(--ink); border-color: var(--line); background: var(--surface); }}
+            div.stButton > button[kind="primary"], div[data-testid="stFormSubmitButton"] button[kind="primary"] {{ background: var(--accent); border-color: var(--accent); color: var(--canvas); }}
+            blockquote {{ border-left-color: var(--accent); color: var(--muted); }}
+            .stMarkdown, .stCaption {{ color: var(--ink); }}
+            .prdiq-eyebrow {{ color: var(--accent); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 st.sidebar.markdown("### PRDIQ")
 st.sidebar.caption("Draft and review PRDs for AI features.")
 st.sidebar.markdown("**Review engine**  \n24 deterministic checks")

@@ -6,6 +6,15 @@ from streamlit.testing.v1 import AppTest
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
 
 
+def test_dark_theme_toggle_switches_palette():
+    app = AppTest.from_file(str(APP_PATH)).run()
+    toggle = next(item for item in app.toggle if item.label == "Dark theme")
+    toggle.set_value(True).run()
+
+    assert not app.exception
+    assert any("#101817" in item.value for item in app.markdown)
+
+
 def test_review_without_api_key_shows_rule_fallback(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     app = AppTest.from_file(str(APP_PATH)).run()
