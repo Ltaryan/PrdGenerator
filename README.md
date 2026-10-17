@@ -40,4 +40,6 @@ Run `python -m prdiq.evaluation` to compare the rule reviewer with the deliberat
 No accounts, database, team sharing, Jira integration, or Notion sync.
 
 
+Planning documents: [3-month roadmap](docs/ROADMAP.md) and [experiment plan for AI review](docs/EXPERIMENT_PLAN.md).
+
 See [PRD.md](./PRD.md) for the complete product requirements, step-by-step operating guide, sample-data and evaluation explanation, edge cases, improvement ideas, and interview preparation.

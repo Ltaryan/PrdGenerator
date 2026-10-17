@@ -236,6 +236,8 @@ This table separates capabilities visible in the project from work that is not e
 
 ## 11. Improvements, in practical order
 
+The next three months of this list are planned in [docs/ROADMAP.md](docs/ROADMAP.md) (Now / Next / Later with reasons), and the decision "should AI review be recommended?" has a designed A/B test in [docs/EXPERIMENT_PLAN.md](docs/EXPERIMENT_PLAN.md).
+
 ### Before relying on results
 
 1. **Evaluate on unseen PRDs.** Collect an approved, de-identified benchmark and human labels; report precision and recall per check.
